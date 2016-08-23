@@ -1,0 +1,1 @@
+# sip_phones_auto-provisioning
