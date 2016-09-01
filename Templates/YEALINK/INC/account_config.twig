@@ -1,0 +1,25 @@
+{% for account in accounts %}
+# ACCOUNT NUMBER {{ loop.index }}
+account.{{ loop.index }}.enable = 1
+account.{{ loop.index }}.label = {{ account.extension }}
+account.{{ loop.index }}.display_name = {{ account.display_name }}
+account.{{ loop.index }}.user_name = {{ account.extension }}
+account.{{ loop.index }}.auth_name = {{ account.extension }}
+account.{{ loop.index }}.password = {{ account.secret }}
+account.{{ loop.index }}.sip_server.1.address = {{ account.server_ip }}
+account.{{ loop.index }}.sip_server.1.expires = 60
+
+# VOICEMAIL SETTINGS FOR ACCOUNT {{ loop.index }}
+account.{{ loop.index }}.subscribe_mwi = 1
+account.{{ loop.index }}.subscribe_mwi_to_vm = 1
+voice_mail.number.{{ loop.index }} = {{ FREEPBX_VOICE_MAIL_MY_OWN_CODE }}
+
+{% endfor %}
+{% set last_key = (line_keys|default(3))%}
+{% if accounts|length < last_key %}
+# CONFIGURE DSS KEYS TO LINE 1
+{% for key in range(accounts|length, last_key, 1) %}
+linekey.{{ key }}.type = 15
+linekey.{{ key }}.line = 1
+{% endfor %}
+{% endif %}

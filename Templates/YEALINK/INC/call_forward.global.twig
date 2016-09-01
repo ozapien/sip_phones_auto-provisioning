@@ -1,0 +1,25 @@
+#######################################################################################
+##                                   Forward Always                                  ##       
+#######################################################################################
+#forward.always.enable = 0
+#forward.always.target = 
+forward.always.on_code = {{ FREEPBX_CF_ALL_ACTIVATE_CODE }}
+forward.always.off_code = {{ FREEPBX_CF_ALL_DEACTIVATE_CODE }}
+
+#######################################################################################
+##                                   Forward Busy                                    ##       
+#######################################################################################
+#forward.busy.enable = 0
+#forward.busy.target = 
+forward.busy.on_code = {{ FREEPBX_CF_BUSY_ACTIVATE_CODE }}
+forward.busy.off_code = {{ FREEPBX_CF_BUSY_DEACTIVATE_CODE }}
+
+#######################################################################################
+##                                   Forward No Answer                               ##       
+#######################################################################################
+#forward.no_answer.enable = 0
+#forward.no_answer.target = 
+# Incoming calls are forwarded when not answered after N*6 seconds. The default value is 2.
+forward.no_answer.timeout = 3
+forward.no_answer.on_code = {{ FREEPBX_CF_NANSWR_ACTIVATE_CODE }}
+forward.no_answer.off_code = {{ FREEPBX_CF_NANSWR_DEACTIVATE_CODE }}

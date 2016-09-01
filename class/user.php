@@ -52,7 +52,7 @@ class User {
     }
 
     function setPhone(Phone &$phone) {
-        $this->phone = $phone;
+        $phone->addUser($this);
     }
 
     function setName($name) {
@@ -69,6 +69,13 @@ class User {
 
     function setServer(Server &$server) {
         $server->addUser($this);
+    }
+    
+    function setRAWPhone(Phone &$phone){
+        $this->phone = $phone;
+    }
+    
+    function setRAWServer(Server &$server){
         $this->server = $server;
     }
 

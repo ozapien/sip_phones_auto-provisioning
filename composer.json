@@ -1,0 +1,11 @@
+{
+    "name": "ceneval/sip-phones-auto-provisioning",
+    "description": "Description of project sip_phones_auto-provisioning.",
+    "authors": [
+        {
+            "name": "omar.zapien",
+            "email": "omar.zapien@ceneval.edu.mx"
+        }
+    ],
+    "require": {"twig/twig":"~1.0"}
+}

@@ -1,0 +1,32 @@
+#!version:1.0.0.1
+# Global configuration file for Yealink T23 Phone
+# Created on {{ "now"|date('d/m/Y H:i')}}
+
+{{ include 'YEALINK/INC/lang.global', ignore_missing = true}}
+
+{{ include 'YEALINK/INC/chg_DND_to_GPickup.global', {key_num:3, dial_code:FREEPBX_GROUP_PICKUP_CODE, label:'Captura'}, ignore_missing = true}}
+
+{{ include 'YEALINK/INC/auto_provision.global', ignore_missing = true}}
+
+{{ set remote_phonebooks = {
+favorite_setting_path:'http://directorio.ceneval.edu.mx/data/favorite_setting.xml',
+list:{
+1:{url:'http://directorio.ceneval.edu.mx/data/directorio-yealink.xml',name:'Directorio WEB'}
+},
+super_search_path: 'http://directorio.ceneval.edu.mx/data/super_search.xml'
+}}
+{{ include 'YEALINK/INC/remote_phonebook.global',remote_phonebooks, ignore_missing = true}}
+
+# FEATURE CODES
+
+{{ include 'YEALINK/INC/call_pickup.global', ignore_missing = true}}
+
+{{ include 'YEALINK/INC/call_waiting.global', ignore_missing = true}}
+
+{{ include 'YEALINK/INC/dnd.global', ignore_missing = true}}
+
+{{ include 'YEALINK/INC/actionurl.global', {actionurlip:'172.16.3.12'}, ignore_missing = true}}
+
+{{ include 'YEALINK/INC/block_menu.global', {menu_pin:83355533, menu_time_to_lock:5}, ignore_missing = true}}
+
+{{ include 'YEALINK/INC/change_users.global', ignore_missing = true}}

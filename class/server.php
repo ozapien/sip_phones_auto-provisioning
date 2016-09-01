@@ -20,6 +20,7 @@
 require_once 'user.php';
 require_once 'phone.php';
 require_once 'network.php';
+require_once 'dbhelpers.php';
 
 class Server {
 
@@ -28,42 +29,72 @@ class Server {
     private $max_users;
     private $users = array();
     private $overloaded;
+    private $use_db_info;
+    private $type;
+    private $db_helper;
     private $db_host;
     private $db_name;
     private $db_user;
     private $db_pass;
 
-    function __construct($name, $max_users = DEFAULT_MAX_SIP_USERS) {
+    function __construct($name, $type, $max_users) {
         $this->name = $name;
+        $this->type = $type;
         $this->max_users = $max_users;
         $this->overloaded = false;
     }
 
     function addNetwork(Network &$net) {
-        $this->networks[] = $net;
+        $this->networks[$net->getName()] = $net;
     }
 
-    function getNetworks($ip = "", $cidr = 24) {
-        if (empty($ip)) {
+    function getNetworks($forIP = "") {
+        if (empty($forIP)) {
             return $this->networks;
         }
 
         foreach ($this->networks as $net) {
-            if (Network::cidr_match($ip, $net->getNet_CIDR())) {
+            if (Network::cidr_match($forIP, $net->getNet_CIDR())) {
                 return $net;
             }
         }
-        $stderr = fopen('php://stderr', 'w');
-        fwrite($stderr, "There's not available network in server $this->name for IP: $ip");
-        fclose($stderr);
-        exit(1);
+        return false;
     }
 
-    function setDB($db_host, $db_name, $db_user, $db_pass) {
+    function getType() {
+        return $this->type;
+    }
+
+    function getDb_helper() {
+        return $this->db_helper;
+    }
+
+    function setDb_helper(DBHelper $db_helper) {
+        $this->db_helper = $db_helper;
+    }
+
+    function getUse_db_info() {
+        return $this->use_db_info;
+    }
+
+    function setUse_db_info($use_db_info) {
+        $this->use_db_info = $use_db_info;
+    }
+
+    function setDBData($db_host, $db_name, $db_user, $db_pass) {
         $this->db_host = $db_host;
         $this->db_name = $db_name;
         $this->db_user = $db_user;
         $this->db_pass = $db_pass;
+    }
+
+    function getDBData() {
+        return array(
+            $this->db_host,
+            $this->db_name,
+            $this->db_user,
+            $this->db_pass
+        );
     }
 
     function getName() {
@@ -91,8 +122,11 @@ class Server {
     }
 
     function addUser(User $user) {
-        $this->users[] = $user;
-        $this->overloaded = ($this->getNumUsers() > $this->max_users);
+        if (!array_key_exists($user->getExtension(), $this->users)) {
+            $this->users[$user->getExtension()] = $user;
+            $this->overloaded = ($this->getNumUsers() > $this->max_users);
+            $user->setRAWServer($this);
+        }
     }
 
     function getStatus() {

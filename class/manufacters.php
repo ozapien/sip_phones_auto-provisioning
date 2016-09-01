@@ -28,15 +28,15 @@ class Manufacters {
 
     function getSupported($manufacter = "") {
         if (empty($manufacter)) {
-            return $this->supported;
+             $this->supported;
         }
         if (array_key_exists(strtoupper($manufacter), $this->supported)) {
-            return $this->supported[strtoupper($manufacter)];
+            return  $this->supported[strtoupper($manufacter)];
         } else {
             $stderr = fopen('php://stderr', 'w');
             fwrite($stderr, "Required manufacter ($manufacter) not yet supported.\n");
             fwrite($stderr, "Use one of:\n");
-            foreach ($this->supported as $supported_manufacter) {
+            foreach ( $this->supported as $supported_manufacter) {
                 fwrite($stderr, "\t" . $supported_manufacter->getName()."\n");
             }
             fclose($stderr);
@@ -46,5 +46,5 @@ class Manufacters {
 
 }
 
+global $manufacters;
 $manufacters = new Manufacters();
-

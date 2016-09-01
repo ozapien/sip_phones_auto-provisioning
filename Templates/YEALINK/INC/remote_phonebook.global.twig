@@ -1,0 +1,9 @@
+# Directorio Remoto
+directory_setting.url = {{remote_phonebooks.favorite_setting_path }}
+{% for remote_phonebook in remote_phonebooks.list %}
+remote_phonebook.data.{{ loop.index }}.url = {{remote_phonebook.data_path }}
+remote_phonebook.data.{{ loop.index }}.name = {{remote_phonebook.name }}
+{% endfor %}
+features.remote_phonebook.enable = 0
+features.remote_phonebook.flash_time = 3600
+super_search.url = {{remote_phonebook.super_search_path }}

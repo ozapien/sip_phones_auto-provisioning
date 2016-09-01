@@ -18,6 +18,7 @@
  */
 
 class Network {
+
     private $name;
     private $ip;
     private $cidr;
@@ -26,28 +27,15 @@ class Network {
     private $ns2;
     private $vlantag;
 
-    function __construct($name, $ip, $cidr, $gateway, $vlantag=0, $ns1 = "8.8.8.8", $ns2 = "4.2.2.2") {
-        if (
-                !filter_var($ip, FILTER_VALIDATE_IP) ||
-                ($cidr < 0 || $cidr > 32) ||
-                !filter_var($gateway, FILTER_VALIDATE_IP) ||
-                !filter_var($ns1, FILTER_VALIDATE_IP) ||
-                !filter_var($ns2, FILTER_VALIDATE_IP) || 
-                ($vlantag<0 || $vlantag > 4096)
-        ) {
-            $stderr = fopen('php://stderr', 'w');
-            fwrite($stderr, "Parámetros de red incorrectos:\n");
-            fwrite($stderr, "IP: $ip\nCIDR: $cidr\nGATEWAY: $ip\nNS1: $ns1\nNS2: $ns2");
-            fclose($stderr);
-            exit(1);
-        }
-        $this->name=$name;
+    function __construct($name, $ip, $cidr, $gateway, $vlantag = 0, $ns1 = "", $ns2 = "") {
+        Network::validateNetwork($ip, $cidr, $gateway, $vlantag, $ns1, $ns2, "Invalid network parameters.\n");
+        $this->name = $name;
         $this->ip = $ip;
-        $this->cidr = $cidr;
+        $this->cidr = intval($cidr);
         $this->gateway = $gateway;
         $this->ns1 = $ns1;
         $this->ns2 = $ns2;
-        $this->vlantag=$vlantag;
+        $this->vlantag = intval($vlantag);
     }
 
     function getIp() {
@@ -83,7 +71,7 @@ class Network {
     function getNs2() {
         return $this->ns2;
     }
-    
+
     function getName() {
         return $this->name;
     }
@@ -92,7 +80,6 @@ class Network {
         return $this->vlantag;
     }
 
-    
     function setIp($ip) {
         $this->ip = $ip;
     }
@@ -112,7 +99,7 @@ class Network {
     function setNs2($ns2) {
         $this->ns2 = $ns2;
     }
-    
+
     function setName($name) {
         $this->name = $name;
     }
@@ -121,7 +108,6 @@ class Network {
         $this->vlantag = $vlantag;
     }
 
-    
     static function cidr_match($ip, $range) {
         list ($networkAddr, $bits) = explode('/', $range);
         $significativeIP = substr(Network::IP2bin($ip), 0, $bits);
@@ -141,16 +127,92 @@ class Network {
     static function CIDRtoMask($cidr) {
         return long2ip(-1 << (32 - (int) $cidr));
     }
-    
-    static function  validateMAC($mac){
-        if (defined(FILTER_VALIDATE_MAC)){
+
+    static function validateMAC($mac) {
+        if (defined(FILTER_VALIDATE_MAC)) {
             return filter_var($mac, FILTER_VALIDATE_MAC);
-        } else{
+        } else {
             $d = '[0-9a-f]';
             $s = '[:|-]';
-            $mac_pattern="/(^$d{12}\$)|(^$d{2}$s$d{2}$s$d{2}$s$d{2}$s$d{2}$s$d{2}\$)/i";
+            $mac_pattern = "/(^$d{12}\$)|(^$d{2}$s$d{2}$s$d{2}$s$d{2}$s$d{2}$s$d{2}\$)/i";
             return preg_match($mac_pattern, $mac) ? $mac : false;
         }
+    }
+
+    static function validateNetwork($ip, $cidr, $gateway, $vlantag, $ns1, $ns2, $errormsg) {
+        if (!Network::validateIP($ip)) {
+            Network::exitWithError($errormsg . "Invalid ip address ($ip)");
+        }
+        if (!Network::validateCIDR($cidr)) {
+            Network::exitWithError($errormsg . "Invalid CIDR ($cidr)");
+        }
+        if (!Network::validateGateway($ip, $cidr, $gateway)) {
+            Network::exitWithError($errormsg . "Gateway $gateway is not part of $ip/$cidr");
+        }
+
+        if (!empty($vlantag)) {
+            if (!Network::validateVLANTag($vlantag)) {
+                Network::exitWithError($errormsg . "invalid VLAN ($vlantag)");
+            }
+        }
+        if (!empty($ns1)) {
+            if (!Network::validateIP($ns1)) {
+                Network::exitWithError($errormsg . "Invalid Primary name server ($ns1)");
+            }
+        }
+        if (!empty($ns2)) {
+            if (!empty($ns2) && !Network::validateIP($ns2)) {
+                Network::exitWithError($errormsg . "Invalid secondary name server ($ns1)");
+            }
+        }
+    }
+
+    private static function exitWithError($errormsg) {
+        $stderr = fopen('php://stderr', 'w');
+        fwrite($stderr, $errormsg);
+        fclose($stderr);
+        exit(1);
+    }
+
+    static function validateIP($ip) {
+        if (defined("FILTER_VALIDATE_IP")) {
+            return filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4);
+        } else {
+            $octets = explode('.', $ip);
+            if (count($octets) != 4) {
+                return false;
+            }
+            foreach ($octets as $octect) {
+                $octect = intval($octect);
+                if ($octect < 0 || $octect > 255) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    static function validateCIDR($cidr) {
+        if (defined("FILTER_VALIDATE_INT")) {
+            return !(filter_var($cidr, FILTER_VALIDATE_INT, array("options" => array("min_range" => 0, "max_range" => 32))) === false);
+        }
+        Network::exitWithError("FILTER_VALIDATE_INT not suported. verify PHP version");
+
+        // TODO: implement method if filter_var it's not supported
+    }
+
+    static function validateVLANTag($vlan) {
+        if (defined("FILTER_VALIDATE_INT")) {
+            return !(filter_var($vlan, FILTER_VALIDATE_INT, array("options" => array("min_range" => 0, "max_range" => 4096))) === false);
+        }
+        Network::exitWithError("FILTER_VALIDATE_INT not suported. verify PHP version");
+    }
+
+    static function validateGateway($ip, $cidr, $gateway) {
+        if (!Network::validateIP($gateway)) {
+            Network::exitWithError($errormsg . "Invalid gateway address ($gateway)");
+        }
+        return Network::cidr_match($gateway, "$ip/$cidr");
     }
 
 }

@@ -21,8 +21,9 @@ require_once 'config.inc.php';
 require_once 'class/user.php';
 require_once 'class/phone.php';
 require_once 'class/server.php';
-require_once 'class/userParser.php';
+require_once 'class/serverParser.php';
 require_once 'class/phoneParser.php';
+require_once 'class/userParser.php';
 
 
 $shortopts = "";
@@ -42,7 +43,6 @@ if (!getServers()) {
     fclose($stderr);
     exit(1);
 }
-$DefaultServer = reset(array_keys($servers));
 
 
 if (!getPhones()) {
@@ -53,7 +53,7 @@ if (!getPhones()) {
     exit(1);
 }
 
-if (!$users = getUsers()) {
+if (!getUsers()) {
     $stderr = fopen('php://stderr', 'w');
     fwrite($stderr, "No USER list provided.\n\n");
     fclose($stderr);
@@ -64,10 +64,7 @@ if (!$users = getUsers()) {
 
 
 foreach ($users as $user) {
-    if (array_key_exists($user["mac"], $phones)) {
-        $phone = $phones[$user["mac"]];
-        $phone->addUser($user);
-    }
+   
 }
 
 
@@ -77,24 +74,8 @@ function getServers() {
     /*
      * Convert config_servers in config.inc.php to Objects
      */
-    global $servers;
-    $servers = [];
-    global $config_servers;
-    foreach ($config_servers as $name => $server) {
-        $servers[$name] = new Server($name);
-        foreach ($server["NETWORKS"] as $netname => $netparameters) {
-            $servers[$name]->addNetwork(
-                    new Network(
-                    $netname, $netparameters["IP"], $netparameters["CIDR"], $netparameters["GW"], ((array_key_exists("VLAN", $netparameters)) ? $netparameters["VLAN"] : 0), $netparameters["NS1"], $netparameters["NS2"]
-                    )
-            );
-            if (USE_DB_DATA) {
-                $servers[$name]->setDB(
-                        $server["DB_HOST"], $server["DB_NAME"], $server["DB_USER"], $server["DB_PASS"]
-                );
-            }
-        }
-    }
+    global $servers, $config_servers;
+    $servers = ServerParser::parseFromCFG($config_servers);
     return !empty($servers);
 }
 
@@ -120,13 +101,12 @@ Use prov -u USERS_CSV_FILE -p PHONES_CSV_FILE [OPTIONS]
     OPTIONS:
         -g                  Copy global configuration file template of
                             processed phone models.
-        -v                  Verbose mode. Provide stats and validate load
-                            of server.
+        -v                  Verbose mode. Provide stats.
     
     USERS_CSV_FILE          Comma separated value file containing following
                             cols:
-        mac                 MAC Address of phone to assign.
-        extension           Unique extension to assing to user.
+        mac                 REQUIRED: MAC Address of phone to assign.
+        extension           REQUIRED: Unique extension to assing to user.
         name                OPTIONAL: Display name. If DB access is 
                             configurated, name will be set from DB and this
                             column can be ommited.
@@ -138,29 +118,32 @@ Use prov -u USERS_CSV_FILE -p PHONES_CSV_FILE [OPTIONS]
                             column can be ommited.
         server_ip           OPTIONAL: Server ip in which the user is assigned
                             In case this column was not supplied, users will be
-                            configured into the first supplied (default) server
+                            configured in the first configured server into
+                            config.inc.php
     
     PHONES_CSV_FILE         Comma separated value file containing following
                             cols:
-        mac                 MAC Address of phone to assign.
-        manufacter          Name of phone manufacter. Can be one of:
+        mac                 REQUIRED: MAC Address of phone to assign.
+        manufacter          REQUIRED: Name of phone manufacter. Can be one of:
                             -Yealink
-        model               Model of supported phones. Canbe one of:
+        model               REUIRED: Model of supported phones. Canbe one of:
                             -Yealink
                                 *T23
                                 *T46
-        dhcp                OPTIONAL: 0 = USE STATIC ADDRESS otherwise use DHCP
+        dhcp                OPTIONAL: Configure phone network setting by DHCP
+                                YES = USE DHCP,
+                                NO = USE STATIC ADDRESS
+                                If not provided, DHCP it's used, except that
+                                network parameters have been provided.
         ip                  REQUIRED IF NO DHCP IT'S USED:
-                                IP to configure on WAN port
+                                IPV4 to configure on WAN port
         cidr                REQUIRED IF NO DHCP IT'S USED:
-                                Netmask bit length.
+                                IPV4, netmask bit length (0 to 32).
         gw                  REQUIRED IF NO DHCP IT'S USED:
                                 Phone gateway Address.
-        vlantag             REQUIRED IF NO DHCP IT'S USED:
-                                0 = not used otherwise vlan number to tag
-                                into WAN phone port
-        ns1                 REQUIRED IF NO DHCP IT'S USED:
-                                Phone primary DNS.
+        vlantag             OPTIONAL: 0 or "" (Empty) = not used,
+                                otherwise vlan number to tag in WAN phone port
+        ns1                 OPTIONAL: Phone primary DNS.
         ns2                 OPTIONAL: Phone secondary DNS.
     
 EOF;

@@ -1,0 +1,16 @@
+{% for module in modules %}
+{% set module_num = loop.index %}
+{% for key in module.keys %}
+{%if (key.type|upper) == 'BLF' %}
+# BLF KEY
+expansion_module.{{ module_num }}.key.{{ key.number }}.type = 16
+{% elseif (key.type|upper) == 'DIAL' %}
+# SPEED DIAL KEY
+expansion_module.1.key.6.type = 13
+{% endif %}
+expansion_module.{{ module_num }}.key.{{ key.number }}.line = {{ key.line }}
+expansion_module.{{ module_num }}.key.{{ key.number }}.value = {{ key.value }}
+expansion_module.{{ module_num }}.key.{{ key.number }}.label = {{ key.label }}
+
+{% endfor %}
+{% endfor %}

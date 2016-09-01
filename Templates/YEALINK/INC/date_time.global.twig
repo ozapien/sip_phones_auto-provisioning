@@ -1,0 +1,8 @@
+# DATE / TIME CONFIG
+local_time.time_zone = {{ time_zone|default(-6) }}
+local_time.time_zone_name = {{ time_zone_name | default('Mexico(Mexico City,Acapulco)') }}
+local_time.ntp_server1 = {{ ntp_server1| default('pool.ntp.org') }}
+local_time.ntp_server2 = {{ ntp_server2| default('north-america.pool.ntp.org') }}
+local_time.date_format = {{ date_format |default(5) }}
+local_time.time_format = {{ time_format | default(0) }}
+local_time.summer_time = {{ summer_time |default(2) }}

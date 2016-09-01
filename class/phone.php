@@ -28,7 +28,7 @@ class Phone {
     private $model;
     private $network;
     private $useDHCP;
-    private $usuarios = array();
+    private $users = array();
    
 
     function __construct($MAC, Model $model, $useDHCP = true, $network = "") {
@@ -52,8 +52,20 @@ class Phone {
         }
     }
 
-    function getMAC() {
-        return $this->MAC;
+    function getMAC($separator="", $case="lowercase") {
+        
+        $mac = ($case==="lowercase") ? $this->MAC : strtoupper($this->MAC) ;
+        
+        if (empty($separator)){
+            return $mac;
+        }
+        $return="";
+        for ($i = 0; $i < 10; $i+=2) {
+            $return.= substr($mac,$i,2) . $separator;
+        }
+        $return.= substr($mac,$i,2);
+        
+        return $return;
     }
 
     function setMAC($MAC) {
@@ -78,9 +90,9 @@ class Phone {
     }
 
     function addUser(User &$user) {
-        if (!array_key_exists($user->getExtension(), $this->usuarios)) {
-            $user->setPhone($this);
-            $this->usuarios[$user->getExtension()] = $user;
+        if (!array_key_exists($user->getExtension(), $this->users)) {
+            $user->setRAWPhone($this);
+            $this->users[$user->getExtension()] = $user;
         }
     }
 
@@ -88,32 +100,32 @@ class Phone {
         $this->network = $net;
     }
 
-    function getnetwork() {
+    function getNetwork() {
         return $this->network;
     }
 
-    function getmanufacter() {
+    function getManufacter() {
         return $this->model->getManufacter();
     }
 
-    function getmax_accounts() {
+    function getMax_Accounts() {
         return $this->model->getMax_sip_accounts();
     }
 
-    function getmodel() {
+    function getModel() {
         return $this->model;
     }
 
-    function getusuarios($exten = "") {
+    function getUsers($exten = "") {
         if (empty($exten)) {
-            return $this->usuarios;
+            return $this->users;
         } else {
-            return (array_key_exists($exten, $this->usuarios)) ? $this->usuarios[$exten] : false;
+            return (array_key_exists($exten, $this->users)) ? $this->users[$exten] : false;
         }
     }
     
     function getNumUsers(){
-        return count($this->usuarios);
+        return count($this->users);
     }
 
 }

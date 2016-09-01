@@ -1,0 +1,7 @@
+#!version:1.0.0.1
+
+auto_provision.server.url = {{provision_server}}
+
+{{ include 'YEALINK/INC/account_config'}}
+{{ include 'YEALINK/INC/network_config'}}
+{{ include 'YEALINK/INC/extension_module_config', ignore_missing = true}}

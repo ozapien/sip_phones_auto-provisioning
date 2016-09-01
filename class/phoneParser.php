@@ -67,17 +67,11 @@ abstract class PhoneParser {
 
     private static function openCSV() {
         if (!file_exists(PhoneParser::$CSVFile)) {
-            $stderr = fopen('php://stderr', 'w');
-            fwrite($stderr, "Phone CSV file (" . PhoneParser::$CSVFile . "), does not exist.\n\n");
-            fclose($stderr);
-            exit(1);
+            PhoneParser::exitWithError("Phone CSV file (" . PhoneParser::$CSVFile . "), does not exist.\n\n");
         }
         PhoneParser::$fileHandler = fopen(PhoneParser::$CSVFile, 'r');
         if (empty(PhoneParser::$fileHandler)) {
-            $stderr = fopen('php://stderr', 'w');
-            fwrite($stderr, "Cannot open " . PhoneParser::$CSVFile . " file.\n\n");
-            fclose($stderr);
-            exit(1);
+            PhoneParser::exitWithError("Cannot open " . PhoneParser::$CSVFile . " file.\n\n");
         }
     }
 
@@ -85,10 +79,7 @@ abstract class PhoneParser {
         // First line
         $headers_arr = fgetcsv(PhoneParser::$fileHandler, 0, ',');
         if (empty($headers_arr)) {
-            $stderr = fopen('php://stderr', 'w');
-            fwrite($stderr, "Empty phone CSV file (" . PhoneParser::$CSVFile . ").\n\n");
-            fclose($stderr);
-            exit(1);
+            PhoneParser::exitWithError("Empty phone CSV file (" . PhoneParser::$CSVFile . ").\n\n");
         }
         PhoneParser::mapHeaders($headers_arr);
         while (($line_arr = fgetcsv(PhoneParser::$fileHandler, 0, ',')) !== FALSE) {
@@ -112,13 +103,19 @@ abstract class PhoneParser {
                 PhoneParser::$requiredCols["manufacter"]["Col"] < 0 ||
                 PhoneParser::$requiredCols["model"]["Col"] < 0
         ) {
-            $stderr = fopen('php://stderr', 'w');
-            fwrite($stderr, "Phone CSV file (" . PhoneParser::$CSVFile . " does not contain required columns (mac, manufacter, model).\n\n");
-            fclose($stderr);
+            PhoneParser::exitWithError("Phone CSV file (" . PhoneParser::$CSVFile . " does not contain required columns (mac, manufacter, model).\n\n");
         }
         foreach (PhoneParser::$optionalCols as $key => $value) {
             if (!PhoneParser::$optionalCols[$key]["Exist"]) {
                 unset(PhoneParser::$optionalCols[$key]);
+            }
+        }
+        if (array_key_exists("ip", PhoneParser::$optionalCols)) {
+            $existingoptions = array_keys(PhoneParser::$optionalCols);
+            foreach (array("ip", "cidr", "gw") as $option) {
+                if (!in_array($option, $existingoptions)) {
+                    PhoneParser::exitWithError("Missing column $option in Phone CSV file ");
+                }
             }
         }
     }
@@ -130,7 +127,7 @@ abstract class PhoneParser {
         $phone["model"] = ($csvLine[PhoneParser::$requiredCols["model"]["Col"]]);
         $options = array_keys(PhoneParser::$optionalCols);
         foreach ($options as $option) {
-            $user[$option] = ($csvLine[PhoneParser::$optionalCols[$option]["Col"]]);
+            $phone[$option] = ($csvLine[PhoneParser::$optionalCols[$option]["Col"]]);
         }
         PhoneParser::$csvphones[$mac] = $phone;
     }
@@ -140,7 +137,7 @@ abstract class PhoneParser {
         foreach (PhoneParser::$csvphones as $mac => $arr_values) {
             $manufacter = $manufacters->getSupported($arr_values["manufacter"]);
             $model = $manufacter->getModel($arr_values["model"]);
-            if (empty($arr_values["dhcp"])) {
+            if (PhoneParser::verifyDHCPUse($arr_values)) {
                 $phone = new Phone($mac, $model);
             } else {
                 list($ip, $cidr, $gateway, $vlantag, $ns1, $ns2) = PhoneParser::getNet($mac, $arr_values);
@@ -151,22 +148,40 @@ abstract class PhoneParser {
         }
     }
 
+    private static function verifyDHCPUse($arr_values) {
+        if (array_key_exists("dhcp", $arr_values) && strtoupper($arr_values["dhcp"]) === "YES") {
+            return TRUE;
+        }
+        if (
+                !empty($arr_values["ip"]) &&
+                !empty($arr_values["cidr"]) &&
+                !empty($arr_values["gw"])
+        ) {
+            return FALSE;
+        }
+        return TRUE;
+    }
+
     private static function getNet($mac, $arr_values) {
         try {
             $ip = $arr_values["ip"];
             $cidr = $arr_values["cidr"];
-            $gateway = $arr_values["gateway"];
+            $gateway = $arr_values["gw"];
             $vlantag = empty($arr_values["vlantag"]) ? 0 : $arr_values["vlantag"];
-            $ns1 = $arr_values["ns1"];
-            $ns2 = empty($arr_values["ns2"]) ? "4.2.2.2" : $arr_values["ns2"];
+            $ns1 = array_key_exists("ns1", $arr_values) ? $arr_values["ns1"] : "";
+            $ns2 = array_key_exists("ns2", $arr_values) ? $arr_values["ns2"] : "";
         } catch (Exception $exc) {
             //echo $exc->getTraceAsString();
-            $stderr = fopen('php://stderr', 'w');
-            fwrite($stderr, "Missing network parameters for phone with mac address: $mac.\n\n");
-            fclose($stderr);
-            exit(1);
+            PhoneParser::exitWithError("Missing network parameters for phone with mac address: $mac.\n\n");
         }
         return array($ip, $cidr, $gateway, $vlantag, $ns1, $ns2);
+    }
+
+    static private function exitWithError($errormsg) {
+        $stderr = fopen('php://stderr', 'w');
+        fwrite($stderr, $errormsg);
+        fclose($stderr);
+        exit(1);
     }
 
 }

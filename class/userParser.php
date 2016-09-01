@@ -17,21 +17,36 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+require_once 'user.php';
+require_once 'phone.php';
+require_once 'server.php';
+
 abstract class UserParser {
 
     static $CSVFile;
     static $csvusers = [];
+    static $users = [];
     private static $requiredCols;
     private static $optionalCols;
     private static $fileHandler;
 
     static function parseFile($CSVUserFile, &$phones, &$servers) {
+        UserParser::Cleanup();
         UserParser::SetCols();
         UserParser::$CSVFile = $CSVUserFile;
         UserParser::openCSV();
         UserParser::iterateCSV();
-        // instantiate
-        return UserParser::$csvusers;
+        UserParser::instantiateUsers($phones, $servers);
+        return UserParser::$users;
+    }
+
+    static function Cleanup() {
+        UserParser::$CSVFile = null;
+        UserParser::$csvusers = [];
+        UserParser::$users = [];
+        UserParser::$requiredCols = null;
+        UserParser::$optionalCols = null;
+        UserParser::$fileHandler = null;
     }
 
     private static function SetCols() {
@@ -67,10 +82,7 @@ abstract class UserParser {
         // First line
         $headers_arr = fgetcsv(UserParser::$fileHandler, 0, ',');
         if (empty($headers_arr)) {
-            $stderr = fopen('php://stderr', 'w');
-            fwrite($stderr, "Empty user CSV file (" . UserParser::$CSVFile . ").\n\n");
-            fclose($stderr);
-            exit(1);
+            UserParser::exitWithError("Empty user CSV file (" . UserParser::$CSVFile . ").\n\n");
         }
         UserParser::mapHeaders($headers_arr);
         while (($line_arr = fgetcsv(UserParser::$fileHandler, 0, ',')) !== FALSE) {
@@ -89,10 +101,7 @@ abstract class UserParser {
                 UserParser::$optionalCols[$value]["Col"] = $key;
             }
         }
-        if (
-                UserParser::$requiredCols["mac"]["Col"] < 0 ||
-                UserParser::$requiredCols["extension"]["Col"] < 0
-        ) {
+        if (UserParser::$requiredCols["mac"]["Col"] < 0 || UserParser::$requiredCols["extension"]["Col"] < 0) {
             $stderr = fopen('php://stderr', 'w');
             fwrite($stderr, "User CSV file (" . UserParser::$CSVFile . " does not contain required columns (mac, extension).\n\n");
             fclose($stderr);
@@ -113,6 +122,62 @@ abstract class UserParser {
             $user[$option] = ($csvLine[UserParser::$optionalCols[$option]["Col"]]);
         }
         UserParser::$csvusers[$extension] = $user;
+    }
+
+    private static function instantiateUsers(&$phones, &$servers) {
+        $DefaultServer = $servers[reset(array_keys($servers))];
+        foreach (UserParser::$csvusers as $extension => $arr_values) {
+            $user = new User($extension);
+            if (array_key_exists($arr_values["mac"], $phones)) {
+                $phone = $phones[$arr_values["mac"]];
+                $phone->addUser($user);
+            } else {
+                UserParser::exitWithError("There's not phone with mac address (" . $arr_values["mac"] . ") to assing to user with extension $extension");
+            }
+
+            $server = (array_key_exists("server_ip", $arr_values)) ? UserParser::getServerWithIP($servers, $arr_values["server_ip"]) : $DefaultServer;
+            UserParser::fillUserInfo($user, $arr_values, $server);
+            UserParser::$users[$extension] = $user;
+        }
+    }
+
+    private static function fillUserInfo(User &$user, $arr_values, Server &$server) {
+        if($server->getUse_db_info()){
+            $data= $server->getDb_helper()->getUserData($user->getExtension());
+            $user->setName($data["display_name"]);
+            $user->setPassword($data["secret"]);
+        } else{
+            try {
+                $user->setName($arr_values["name"]);
+                $user->setPassword($arr_values["password"]);
+                $server->addUser($user);
+            } catch (Exception $exc) {
+                //echo $exc->getTraceAsString();
+                UserParser::exitWithError("Missing information to configure extension: " . $user->getExtension());
+            }
+
+            
+        }
+    }
+
+    private static function getServerWithIP(&$servers, $ip) {
+        foreach ($servers as $name => $server) {
+            if ($server->getNetworks($ip)) {
+                return $server;
+            }
+        }
+        UserParser::exitWithError("No valid server found with ip $ip");
+    }
+
+    private static function getUserDataFromServer(&$user, &$server) {
+        
+    }
+
+    private static function exitWithError($errmsg) {
+        $stderr = fopen('php://stderr', 'w');
+        fwrite($stderr, $errmsg);
+        fclose($stderr);
+        exit(1);
     }
 
 }
